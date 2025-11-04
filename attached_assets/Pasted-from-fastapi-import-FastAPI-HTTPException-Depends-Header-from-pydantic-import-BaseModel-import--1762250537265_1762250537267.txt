@@ -1,0 +1,55 @@
+from fastapi import FastAPI, HTTPException, Depends, Header
+from pydantic import BaseModel
+import subprocess  # برای اجرای کد
+import os
+from fastapi.responses import FileResponse  # برای ارسال فایل
+from fastapi.security import HTTPBearer  # برای چک توکن (اختیاری، اما ساده)
+
+app = FastAPI()
+
+# Secret رو از Replit لود می‌کنیم
+API_TOKEN = os.getenv('API_TOKEN')  # این همون n8n_replit_secret_123 شماست
+
+# مدل برای داده ورودی از n8n
+class CodeRequest(BaseModel):
+    code: str  # کد پایتون که AI تولید کرده
+
+# تابع برای چک توکن (از Header می‌گیره)
+async def verify_token(authorization: str = Header(None)):
+    if authorization != f"Bearer {API_TOKEN}":
+        raise HTTPException(status_code=401, detail="توکن نامعتبر! دسترسی رد شد.")
+    return True
+
+@app.post("/execute-code")  # endpoint اصلی – n8n به اینجا POST می‌فرسته
+async def execute_code(request: CodeRequest, verified = Depends(verify_token)):
+    try:
+        # کد رو در فایل موقت ذخیره می‌کنیم
+        temp_file = "temp_code.py"
+        with open(temp_file, "w", encoding="utf-8") as f:
+            f.write(request.code)
+        
+        # کد رو اجرا می‌کنیم (timeout ۳۰ ثانیه برای ایمنی)
+        result = subprocess.run(["python", temp_file], capture_output=True, text=True, timeout=30)
+        
+        if result.returncode != 0:
+            raise HTTPException(status_code=500, detail=f"خطا در اجرای کد: {result.stderr}")
+        
+        # چک فایل خروجی (فرض: کد AI فایل output.docx می‌سازه)
+        output_file = "output.docx"
+        if not os.path.exists(output_file):
+            raise HTTPException(status_code=404, detail="فایل ورد ساخته نشد!")
+        
+        # فایل رو برمی‌گردونیم (دانلود مستقیم)
+        return FileResponse(
+            path=output_file, 
+            filename="translated_document.docx", 
+            media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+    
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"خطای کلی: {str(e)}")
+
+# برای تست ساده: GET به ریشه
+@app.get("/")
+async def root():
+    return {"پیام": "سرور Replit آماده است! برای تست، به /execute-code POST کنید با توکن."}
