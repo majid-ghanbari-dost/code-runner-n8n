@@ -19,7 +19,7 @@ async def verify_token(authorization: str = Header(None)):
 @app.post("/execute-code")
 async def execute_code(request: CodeRequest, verified = Depends(verify_token)):
     try:
-        temp_file = "temp_code.py"
+        temp_file = "/tmp/temp_code.py"
         with open(temp_file, "w", encoding="utf-8") as f:
             f.write(request.code)
         
@@ -28,7 +28,7 @@ async def execute_code(request: CodeRequest, verified = Depends(verify_token)):
         if result.returncode != 0:
             raise HTTPException(status_code=500, detail=f"خطا در اجرای کد: {result.stderr}")
         
-        output_file = "output.docx"
+        output_file = "/tmp/output.docx"
         if not os.path.exists(output_file):
             raise HTTPException(status_code=404, detail="فایل ورد ساخته نشد!")
         
