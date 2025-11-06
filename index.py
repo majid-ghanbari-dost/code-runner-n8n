@@ -43,8 +43,4 @@ async def execute_code(request: CodeRequest, verified = Depends(verify_token)):
 
 @app.get("/")
 async def root():
-    return {"پیام": "سرور Replit آماده است! برای تست، به /execute-code POST کنید با توکن."}
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8080)
+    return {"پیام": "سرور آماده است! برای تست، به /execute-code POST کنید با توکن."}
