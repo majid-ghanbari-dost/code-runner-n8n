@@ -26,19 +26,26 @@ async def execute_code(request: CodeRequest, verified = Depends(verify_token)):
         result = subprocess.run(["python", temp_file], capture_output=True, text=True, timeout=30)
         
         if result.returncode != 0:
+            print(f"خطا در اجرای کد: {result.stderr}")  # log برای debug
             raise HTTPException(status_code=500, detail=f"خطا در اجرای کد: {result.stderr}")
         
-        output_file = "/tmp/output.docx"
+        output_file = "/tmp/output.docx"  # همیشه این نام
         if not os.path.exists(output_file):
+            print("فایل output.docx ساخته نشد!")  # log
             raise HTTPException(status_code=404, detail="فایل ورد ساخته نشد!")
         
+        print(f"فایل ساخته شد: {os.path.getsize(output_file)} bytes")  # log موفقیت
+        
         return FileResponse(
-            path=output_file, 
-            filename="translated_document.docx", 
+            path=output_file,
+            filename="translated_document.docx",  # نام دانلود
             media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         )
     
+    except subprocess.TimeoutExpired:
+        raise HTTPException(status_code=408, detail="تایم‌اوت — کد طولانی")
     except Exception as e:
+        print(f"خطای کلی: {str(e)}")  # log
         raise HTTPException(status_code=500, detail=f"خطای کلی: {str(e)}")
 
 @app.get("/")
